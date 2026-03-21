@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Market Map</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+  :root{--dk:#071517;--ac:#1fa497;--ac2:rgba(31,164,151,.10);--ac3:rgba(31,164,151,.30);--mut:rgba(200,222,221,.50);--cr:#e53935;--cb:#42a5f5;--sf:rgba(255,255,255,.97);--sh:0 6px 24px rgba(0,0,0,.14);--rd:10px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Outfit',sans-serif;background:var(--dk);height:100vh;overflow:hidden;display:flex;flex-direction:column;color:#fff}
+  .topbar{height:52px;background:var(--dk);display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0;border-bottom:1px solid var(--ac3);z-index:200}
+  .topbar-left{display:flex;align-items:center;gap:10px}
+  .topbar-left svg{width:26px;height:26px}
+  .topbar-left span{font-size:13px;font-weight:600;letter-spacing:.6px;color:#5eddd0}
+  .topbar-center{font-size:14px;font-weight:600}
+  .topbar-chip{background:var(--ac2);border:1px solid var(--ac3);color:var(--ac);font-size:10px;font-weight:700;padding:3px 11px;border-radius:14px;letter-spacing:.5px}
+  .screen{flex:1;display:none}.screen.active{display:flex}
+
+  /* Upload */
+  .upload-screen{align-items:center;justify-content:center;overflow:auto}
+  .upload-card{position:relative;z-index:1;width:580px;max-width:94vw;background:rgba(14,32,35,.85);border:1px solid rgba(31,164,151,.15);border-radius:16px;padding:36px 32px;backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,.4);animation:fadeUp .4s ease-out}
+  .upload-card h2{font-size:21px;font-weight:700;margin-bottom:5px}
+  .upload-card .sub{font-size:13px;color:var(--mut);line-height:1.5;margin-bottom:22px}
+  .drop-zone{border:2px dashed rgba(31,164,151,.25);border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+  .drop-zone:hover,.drop-zone.dragover{border-color:var(--ac);background:rgba(31,164,151,.05)}
+  .drop-zone svg{margin-bottom:8px;opacity:.45}
+  .drop-zone .dz-text{font-size:13px;color:var(--mut)}
+  .drop-zone .dz-text strong{color:var(--ac)}
+  .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .upload-hint{margin-top:14px;font-size:11px;color:rgba(200,222,221,.3);text-align:center}
+  .demo-link{display:block;margin-top:16px;text-align:center;font-size:12px;color:var(--ac);cursor:pointer;opacity:.7;transition:opacity .15s;background:none;border:none;font-family:inherit}
+  .demo-link:hover{opacity:1}
+  .errmsg{margin-top:12px;font-size:12px;color:#ef5350;text-align:center;min-height:18px}
+  .uc{display:flex;align-items:flex-start;gap:10px;background:rgba(0,0,0,.2);border:1px solid rgba(31,164,151,.08);border-radius:9px;padding:10px 12px;transition:border-color .15s}
+  .uc:hover{border-color:rgba(31,164,151,.25)}
+  .uc i{font-size:16px;font-style:normal;flex-shrink:0;margin-top:1px}
+  .uc b{font-size:12px;font-weight:600;color:rgba(200,222,221,.8);display:block;margin-bottom:2px}
+  .uc small{font-size:10px;color:rgba(200,222,221,.35);line-height:1.4}
+
+  /* Setup */
+  .setup-screen{align-items:center;justify-content:center;overflow:auto;padding:20px}
+  .setup-card{position:relative;z-index:1;width:640px;max-width:96vw;background:rgba(14,32,35,.85);border:1px solid rgba(31,164,151,.15);border-radius:16px;padding:30px 28px;backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,.4);animation:fadeUp .35s ease-out}
+  .setup-card h2{font-size:19px;font-weight:700;margin-bottom:4px}
+  .setup-card .sub{font-size:13px;color:var(--mut);line-height:1.5;margin-bottom:16px}
+  .pvw{background:rgba(0,0,0,.25);border:1px solid rgba(31,164,151,.08);border-radius:10px;padding:12px 14px;margin-bottom:16px;overflow-x:auto}
+  .pvw table{width:100%;border-collapse:collapse;font-size:11px}
+  .pvw th{color:var(--ac);font-weight:600;text-align:left;padding:4px 8px;border-bottom:1px solid rgba(31,164,151,.12);white-space:nowrap}
+  .pvw td{color:rgba(200,222,221,.55);padding:3px 8px;white-space:nowrap}
+
+  .sec{margin-bottom:16px}
+  .sec-title{font-size:10px;font-weight:700;color:rgba(200,222,221,.35);letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px}
+  .latlon-row{display:flex;gap:12px;margin-bottom:6px}
+  .ll-pick{flex:1;display:flex;align-items:center;gap:8px}
+  .ll-pick label{font-size:12px;font-weight:600;color:rgba(200,222,221,.7);white-space:nowrap}
+  .ll-pick select,.viz-pick select{background:rgba(0,0,0,.35);border:1px solid rgba(31,164,151,.15);border-radius:7px;padding:7px 10px;color:#fff;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;outline:none;flex:1;min-width:0}
+  .ll-pick select:focus,.viz-pick select:focus{border-color:var(--ac)}
+  .ll-pick select option,.viz-pick select option{background:#0e2023}
+  .auto-tag{font-size:8px;background:rgba(31,164,151,.25);color:var(--ac);padding:1px 5px;border-radius:6px;font-weight:700}
+  .col-checks{display:flex;flex-wrap:wrap;gap:6px}
+  .col-chk{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.25);border:1px solid rgba(31,164,151,.1);border-radius:7px;padding:6px 11px;cursor:pointer;transition:all .15s;font-size:12px;color:rgba(200,222,221,.6)}
+  .col-chk:hover{border-color:rgba(31,164,151,.3)}
+  .col-chk.on{background:rgba(31,164,151,.12);border-color:var(--ac);color:var(--ac)}
+  .col-chk input{display:none}
+  .col-chk .ck{width:14px;height:14px;border:1.5px solid rgba(200,222,221,.25);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+  .col-chk.on .ck{background:var(--ac);border-color:var(--ac)}
+  .col-chk.on .ck::after{content:'✓';font-size:10px;color:#fff;line-height:1}
+
+  .viz-pick{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .viz-pick label{font-size:12px;font-weight:600;color:rgba(200,222,221,.7);white-space:nowrap}
+
+  .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .btn{font-family:inherit;font-size:13px;font-weight:600;padding:9px 22px;border-radius:8px;cursor:pointer;transition:all .15s;border:none}
+  .btn-g{background:transparent;border:1px solid rgba(31,164,151,.25);color:var(--ac)}
+  .btn-g:hover{background:var(--ac2)}
+  .btn-p{background:var(--ac);color:#fff}
+  .btn-p:hover{background:#17877c}
+
+  /* Map */
+  .map-screen{flex-direction:column}
+  .map-wrap{flex:1;position:relative;overflow:hidden;cursor:grab;background:#e8e0d8}
+  .map-wrap.grabbing{cursor:grabbing}
+  .tile-layer{position:absolute;inset:0;z-index:1}
+  .tile-layer img{position:absolute;width:256px;height:256px;pointer-events:none;user-select:none}
+  .marker-layer{position:absolute;inset:0;z-index:10;pointer-events:none}
+  .mkr{position:absolute;pointer-events:all;cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1),filter .2s ease;will-change:transform;transform:translate(-50%,-50%) scale(1)}
+  .mkr:hover{transform:translate(-50%,-50%) scale(1.6);filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));z-index:20}
+  .tooltip{position:absolute;z-index:100;min-width:190px;max-width:270px;background:#fff;border-radius:10px;padding:13px 16px;box-shadow:0 10px 36px rgba(0,0,0,.22);pointer-events:none;color:#091e20;opacity:0;transition:opacity .12s}
+  .tooltip.show{opacity:1}
+  .tooltip::after{content:'';position:absolute;bottom:-6px;left:50%;width:12px;height:12px;background:#fff;transform:translateX(-50%) rotate(45deg);box-shadow:2px 2px 4px rgba(0,0,0,.06)}
+  .tt-title{font-size:11px;font-weight:700;letter-spacing:.4px;margin-bottom:7px;color:#091e20}
+  .tt-row{display:flex;justify-content:space-between;padding:2px 0}
+  .tt-rl{font-size:11px;color:#6b7f83}
+  .tt-rv{font-size:11px;font-weight:700;color:#091e20}
+  .tt-bar{margin-top:8px;height:5px;background:#e8edef;border-radius:3px;overflow:hidden}
+  .tt-bar-fill{height:100%;border-radius:3px}
+
+  .panel{position:absolute;z-index:30;background:var(--sf);border-radius:var(--rd);box-shadow:var(--sh)}
+  .filter-panel{top:12px;left:62px;padding:10px 14px;display:flex;align-items:center;gap:10px}
+  .filter-label{font-size:10px;font-weight:700;color:#7a8a8e;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+  .filter-btns{display:flex;gap:3px}
+  .fbtn{border:1px solid #d0d8db;background:#fff;color:#2f3f44;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+  .fbtn:hover{background:#f0f4f5}
+  .fbtn.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+  .legend{top:12px;right:12px;padding:14px 16px;min-width:170px}
+  .legend-title{font-size:12px;font-weight:700;color:#091e20;margin-bottom:10px}
+  .legend-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+  .legend-sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+  .legend-lbl{font-size:10px;color:#2f3f44;font-weight:500}
+  .legend-div{height:1px;background:#e2e8ea;margin:8px 0}
+  .legend-note{font-size:9px;color:#9aa8ab;line-height:1.4}
+  .viz-switch{bottom:70px;left:12px;padding:10px 14px;display:flex;align-items:center;gap:8px}
+  .viz-switch .vs-label{font-size:10px;font-weight:700;color:#7a8a8e;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+  .viz-switch select{background:#fff;border:1px solid #d0d8db;border-radius:6px;padding:5px 10px;font-family:inherit;font-size:11px;font-weight:600;color:#2f3f44;cursor:pointer;outline:none;max-width:260px}
+  .viz-switch select:focus{border-color:var(--ac)}
+  .back-panel{top:12px;left:12px;padding:0;overflow:hidden}
+  .back-panel button{display:flex;align-items:center;gap:5px;border:none;background:var(--sf);font-family:inherit;font-size:11px;font-weight:600;color:#2f3f44;padding:9px 14px;cursor:pointer}
+  .back-panel button:hover{background:#f0f4f5}
+  .zoom-ctrl{bottom:70px;right:12px;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:8px}
+  .zbtn{width:34px;height:34px;border:none;border-bottom:1px solid #e2e8ea;background:var(--sf);font-size:18px;cursor:pointer;color:#2f3f44;display:flex;align-items:center;justify-content:center}
+  .zbtn:last-child{border-bottom:none}
+  .zbtn:hover{background:#f0f4f5}
+  .stats-bar{height:50px;display:flex;background:#fff;border-top:1px solid #e2e8ea;flex-shrink:0}
+  .stat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid #e2e8ea}
+  .stat:last-child{border-right:none}
+  .stat-val{font-size:15px;font-weight:700;color:#091e20}
+  .stat-lbl{font-size:8px;font-weight:600;color:#7a8a8e;letter-spacing:.5px;text-transform:uppercase;margin-top:1px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+  .hidden{display:none!important}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="#1fa497"/><path d="M10 16l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>MARKET MAP</span>
+  </div>
+  <div class="topbar-center" id="topTitle">Geographic Data Visualizer</div>
+  <div class="topbar-chip" id="topChip">UPLOAD CSV</div>
+</div>
+
+<!-- ═══ UPLOAD ═══ -->
+<div class="screen upload-screen active" id="s1">
+  <div class="upload-card">
+    <h2>Upload Your Data</h2>
+    <p class="sub">Drop any CSV with latitude &amp; longitude. We handle the rest.</p>
+    <div class="drop-zone" id="dropZone">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(31,164,151,.45)" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      <div class="dz-text">Drag &amp; drop CSV here, or <strong>browse</strong></div>
+      <input type="file" id="fileInput" accept=".csv,.tsv,.txt"/>
+    </div>
+    <div class="upload-hint">Any CSV with lat/lon &bull; All other columns optional</div>
+    <button class="demo-link" id="demoBtn">Load demo dataset →</button>
+    <div class="errmsg" id="e1">&nbsp;</div>
+    <div style="margin-top:18px;border-top:1px solid rgba(31,164,151,.1);padding-top:16px">
+      <div style="font-size:10px;font-weight:700;color:rgba(200,222,221,.3);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">What can you visualize?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="uc"><i>📍</i><div><b>Market Penetration</b><small>Customer vs non-customer by ZIP</small></div></div>
+        <div class="uc"><i>💰</i><div><b>Revenue Heatmap</b><small>Revenue by territory or franchise</small></div></div>
+        <div class="uc"><i>🏠</i><div><b>Franchise Coverage</b><small>Locations, territories &amp; gaps</small></div></div>
+        <div class="uc"><i>📊</i><div><b>Lead &amp; Conversion</b><small>Lead density &amp; close rates</small></div></div>
+        <div class="uc"><i>⭐</i><div><b>Customer Satisfaction</b><small>NPS &amp; review scores</small></div></div>
+        <div class="uc"><i>🔄</i><div><b>Churn &amp; Retention</b><small>Cancellation &amp; LTV mapped</small></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETUP ═══ -->
+<div class="screen setup-screen" id="s2">
+  <div class="setup-card">
+    <h2>Configure Your Map</h2>
+    <p class="sub" id="setupSub"></p>
+    <div class="pvw" id="pvw"></div>
+
+    <div class="sec">
+      <div class="sec-title">📍 Location columns (auto-detected)</div>
+      <div class="latlon-row">
+        <div class="ll-pick"><label>Lat</label><select id="selLat"></select></div>
+        <div class="ll-pick"><label>Lon</label><select id="selLon"></select></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">🏷️ Which column identifies each point?</div>
+      <div><select id="selLabel" style="background:rgba(0,0,0,.35);border:1px solid rgba(31,164,151,.15);border-radius:7px;padding:7px 10px;color:#fff;font-family:inherit;font-size:12px;width:100%;cursor:pointer;outline:none"><option value="">Use lat/lon as label</option></select></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">📊 Which columns to show on hover?</div>
+      <div class="col-checks" id="colChecks"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">🎨 How should markers look?</div>
+      <div class="viz-pick">
+        <label>Color/size by</label>
+        <select id="selViz">
+          <option value="dot">Same size — just plot locations</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="errmsg" id="e2">&nbsp;</div>
+    <div class="actions">
+      <button class="btn btn-g" onclick="go('s1')">← Back</button>
+      <button class="btn btn-p" onclick="doViz()">Show on Map →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAP ═══ -->
+<div class="screen map-screen" id="s3">
+  <div class="map-wrap" id="mapWrap">
+    <div class="tile-layer" id="tileLayer"></div>
+    <div class="marker-layer" id="mkrLayer"></div>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="panel back-panel"><button onclick="go('s1')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>New Data</button></div>
+    <div class="panel filter-panel hidden" id="fPnl"></div>
+    <div class="panel legend" id="legPnl"></div>
+    <div class="panel viz-switch" id="vizSwitch"></div>
+    <div class="panel zoom-ctrl"><button class="zbtn" onclick="doZ(1)">+</button><button class="zbtn" onclick="doZ(-1)">−</button></div>
+  </div>
+  <div class="stats-bar" id="statsBar"></div>
+</div>
+
+<script>
+const T=256,SRV=['a','b','c'],CR='#e53935',CB='#42a5f5',$=id=>document.getElementById(id);
+
+let hdrs=[],rows=[],cfg={lat:'',lon:'',label:'',show:[],viz:'dot',vizCol:''};
+let allPts=[],fPts=[],actF='all',zoom=16,cLat=0,cLon=0,mW=800,mH=500,drag=null,tileCache={},raf=null;
+
+/* ═══ NAV ═══ */
+function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');if(id==='s3'){updDims();render();}$('topChip').textContent=id==='s1'?'UPLOAD CSV':id==='s2'?'CONFIGURE':allPts.length+' POINTS';}
+
+/* ═══ CSV ═══ */
+function parseCSV(t){const ls=t.trim().replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');if(ls.length<2)throw new Error('Need header + data.');const d=ls[0].split('\t').length>ls[0].split(',').length?'\t':',';function sp(l){const c=[];let u='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(q){if(ch==='"'&&l[i+1]==='"'){u+='"';i++}else if(ch==='"')q=false;else u+=ch}else{if(ch==='"')q=true;else if(ch===d){c.push(u.trim());u=''}else u+=ch}}c.push(u.trim());return c}const h=sp(ls[0]).map(s=>s.replace(/^"|"$/g,''));const r=[];for(let i=1;i<ls.length;i++){if(!ls[i].trim())continue;const c=sp(ls[i]).map(s=>s.replace(/^"|"$/g,''));if(c.length>=2)r.push(c)}return{headers:h,rows:r}}
+
+/* ═══ AUTO-DETECT ═══ */
+const LAT_P=[/^(cen)?_?lat(itude)?$/i,/^y$/i];
+const LON_P=[/^(cen)?_?lo?ng?(itude)?$/i,/^x$/i];
+const LBL_P=[/zip/i,/postal/i,/^id$/i,/^name$/i,/^code$/i,/^label$/i,/location/i,/region/i,/territory/i,/area/i,/site/i,/store/i];
+
+function detect(h,pats){for(const p of pats){const m=h.find(x=>p.test(x));if(m)return m}return''}
+function isNumCol(ci){let nums=0;for(let i=0;i<Math.min(10,rows.length);i++){if(!isNaN(parseFloat(rows[i][ci])))nums++}return nums>=Math.min(5,rows.length*.5)}
+function isPenCol(ci){let ok=0;for(let i=0;i<Math.min(20,rows.length);i++){const v=parseFloat(rows[i][ci]);if(!isNaN(v)&&v>=0&&v<=1)ok++}return ok>=Math.min(10,rows.length*.5)}
+
+/* ═══ FILE ═══ */
+function handleFile(f){$('e1').textContent='\u00A0';if(!f)return;const rd=new FileReader;rd.onload=e=>{try{const d=parseCSV(e.target.result);hdrs=d.headers;rows=d.rows;buildSetup();go('s2')}catch(er){$('e1').textContent=er.message}};rd.readAsText(f)}
+$('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+const dz=$('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');handleFile(e.dataTransfer.files[0])});
+
+/* ═══ DEMO ═══ */
+const DEMO=`ZIP_4,CenLat,CenLon,_2025Rev,CustCount,RevPerCust,MktPen\n06807-2111,41.0466,-73.5938,767,12,63.92,1.0\n06807-2114,41.0461,-73.5936,2246,2,1123,0.17\n06807-2113,41.0459,-73.5948,2262,3,754,0.25\n06807-2117,41.0445,-73.5948,1467,12,122,1.0\n06807-2119,41.0452,-73.595,1151,6,192,0.5\n06807-2122,41.0466,-73.5949,2738,1,2738,0.08\n06807-2121,41.0456,-73.5948,2651,9,295,0.75\n06807-2123,41.0462,-73.5948,880,8,110,0.67\n06807-2125,41.0474,-73.5949,3149,12,262,1.0\n06807-2410,41.0406,-73.5987,2533,12,211,1.0\n06807-2133,41.0437,-73.5933,1903,10,190,0.83\n06807-2135,41.0444,-73.5921,3098,1,3098,0.08\n06807-2134,41.0444,-73.592,678,5,136,0.42\n06807-2512,41.0418,-73.5904,2603,6,434,0.5\n06807-2138,41.0451,-73.5945,834,8,104,0.67\n06807-2334,41.0411,-73.6014,1832,12,153,1.0\n06807-2139,41.0459,-73.593,3046,0,0,0.0\n06807-2140,41.0458,-73.5929,2833,9,315,0.75\n06807-2517,41.041,-73.5914,831,11,76,0.92\n06807-2143,41.0447,-73.5922,1934,10,193,0.83\n06807-2144,41.0447,-73.5923,2201,11,200,0.92\n06807-2324,41.0404,-73.6011,636,9,71,0.75\n06807-2323,41.0403,-73.6009,2226,10,223,0.83\n06807-2505,41.0415,-73.5909,4736,18,263,0.75\n06807-2418,41.0414,-73.6,2723,12,227,1.0\n06807-2146,41.0448,-73.5921,2885,9,321,0.75\n06807-2534,41.042,-73.5935,3743,19,197,0.79\n06807-2525,41.0413,-73.5928,3989,14,285,0.58\n06807-2422,41.0418,-73.5986,947,11,86,0.92\n06807-2531,41.0411,-73.5956,2794,12,233,1.0\n06807-2154,41.0458,-73.5935,2900,10,290,0.83\n06807-2325,41.0415,-73.6012,2563,12,214,1.0\n06807-2554,41.0408,-73.5913,2013,13,155,0.54\n06807-2553,41.0439,-73.5916,3246,15,216,0.63\n00000-2137,41.0445,-73.5923,2670,20,134,0.56\n00000-2569,41.0404,-73.5948,5638,18,313,0.75\n00000-2560,41.042,-73.5907,2423,24,101,1.0\n00000-2226,41.0446,-73.5907,5626,24,234,0.67\n00000-2001,41.0451,-73.6003,2544,10,254,0.83\n00000-2019,41.0435,-73.5977,3166,11,288,0.92\n00000-2021,41.0441,-73.5987,4968,12,414,0.5\n00000-2024,41.044,-73.5977,486,12,41,1.0\n00000-2401,41.0427,-73.5982,2209,11,201,0.92\n00000-2112,41.0427,-73.5958,2213,12,184,1.0`;
+$('demoBtn').addEventListener('click',()=>{const d=parseCSV(DEMO);hdrs=d.headers;rows=d.rows;buildSetup();go('s2')});
+
+/* ═══ SETUP UI ═══ */
+function buildSetup(){
+  $('setupSub').innerHTML=`Found <strong>${hdrs.length} columns</strong> and <strong>${rows.length} rows</strong>. Confirm location columns, pick what to show, and choose a marker style.`;
+
+  // Preview
+  let t='<table><tr>'+hdrs.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  for(let i=0;i<Math.min(3,rows.length);i++)t+='<tr>'+hdrs.map((_,j)=>`<td>${rows[i][j]||''}</td>`).join('')+'</tr>';
+  $('pvw').innerHTML=t+'</table>';
+
+  // Lat/Lon selects
+  const detLat=detect(hdrs,LAT_P),detLon=detect(hdrs,LON_P);
+  const opts=hdrs.map(h=>`<option value="${h}">${h}</option>`).join('');
+  $('selLat').innerHTML=opts;$('selLon').innerHTML=opts;
+  if(detLat)$('selLat').value=detLat;
+  if(detLon)$('selLon').value=detLon;
+
+  // Label select
+  const detLbl=detect(hdrs,LBL_P);
+  $('selLabel').innerHTML='<option value="">Use coordinates as label</option>'+hdrs.map(h=>`<option value="${h}">${h}</option>`).join('');
+  if(detLbl)$('selLabel').value=detLbl;
+
+  // Show-on-hover checkboxes (exclude lat/lon)
+  const otherCols=hdrs.filter(h=>h!==detLat&&h!==detLon);
+  $('colChecks').innerHTML=otherCols.map(h=>`<label class="col-chk on"><input type="checkbox" value="${h}" checked/><span class="ck"></span>${h}</label>`).join('');
+  $('colChecks').querySelectorAll('.col-chk').forEach(el=>{
+    el.addEventListener('click',()=>{const inp=el.querySelector('input');el.classList.toggle('on',inp.checked)});
+  });
+
+  // Viz mode — detect numeric columns and penetration columns
+  const vizSel=$('selViz');
+  let vizOpts='<option value="dot">Same size — just plot locations</option>';
+  hdrs.forEach((h,i)=>{
+    if(isPenCol(i))vizOpts+=`<option value="pie:${h}">Pie chart — colored by ${h}</option>`;
+  });
+  hdrs.forEach((h,i)=>{
+    if(isNumCol(i)&&!isPenCol(i))vizOpts+=`<option value="bubble:${h}">Bubble — sized by ${h}</option>`;
+  });
+  vizSel.innerHTML=vizOpts;
+  // Auto-select first pie if available
+  const firstPie=vizSel.querySelector('option[value^="pie:"]');
+  if(firstPie)vizSel.value=firstPie.value;
+}
+
+/* ═══ BUILD DATA ═══ */
+let vizOptions=[]; // stored for in-map switcher
+
+function doViz(){
+  $('e2').textContent='\u00A0';
+  const latH=$('selLat').value,lonH=$('selLon').value;
+  if(!latH||!lonH){$('e2').textContent='Pick lat & lon columns.';return}
+  const li=hdrs.indexOf(latH),loi=hdrs.indexOf(lonH),labH=$('selLabel').value;
+  const showCols=[...document.querySelectorAll('#colChecks input:checked')].map(i=>i.value);
+  const vizVal=$('selViz').value;
+
+  // Store all viz options from the setup dropdown
+  vizOptions=[...$('selViz').options].map(o=>({value:o.value,text:o.textContent}));
+
+  cfg={lat:latH,lon:lonH,label:labH,show:showCols,viz:'dot',vizCol:''};
+  if(vizVal.startsWith('pie:')){cfg.viz='pie';cfg.vizCol=vizVal.split(':')[1]}
+  else if(vizVal.startsWith('bubble:')){cfg.viz='bubble';cfg.vizCol=vizVal.split(':')[1]}
+
+  allPts=[];
+  for(const r of rows){
+    const la=parseFloat(r[li]),lo=parseFloat(r[loi]);if(isNaN(la)||isNaN(lo))continue;
+    const pt={la,lo,label:labH?r[hdrs.indexOf(labH)]:`${la.toFixed(4)}, ${lo.toFixed(4)}`,vals:{},allNums:{}};
+    showCols.forEach(c=>{pt.vals[c]=r[hdrs.indexOf(c)]});
+    // Store all numeric column values so we can switch viz without re-parsing
+    hdrs.forEach((c,ci)=>{const v=parseFloat(r[ci]);if(!isNaN(v))pt.allNums[c]=v});
+    if(cfg.vizCol)pt.vizVal=pt.allNums[cfg.vizCol]||0;
+    allPts.push(pt);
+  }
+  if(!allPts.length){$('e2').textContent='No valid rows found.';return}
+
+  const las=allPts.map(d=>d.la),los=allPts.map(d=>d.lo);
+  cLat=(Math.min(...las)+Math.max(...las))/2;cLon=(Math.min(...los)+Math.max(...los))/2;
+  const span=Math.max(Math.max(...las)-Math.min(...las),Math.max(...los)-Math.min(...los));
+  zoom=span>5?8:span>2?9:span>1?10:span>.5?11:span>.1?13:span>.02?15:16;
+  actF='all';tileCache={};$('tileLayer').innerHTML='';
+  buildVizSwitch(vizVal);buildLegend();buildFilter();go('s3');
+}
+
+function buildVizSwitch(currentVal){
+  const vs=$('vizSwitch');
+  let h='<span class="vs-label">Style</span><select id="mapVizSel">';
+  vizOptions.forEach(o=>{h+=`<option value="${o.value}"${o.value===currentVal?' selected':''}>${o.text}</option>`});
+  h+='</select>';
+  vs.innerHTML=h;
+  $('mapVizSel').addEventListener('change',()=>switchViz($('mapVizSel').value));
+}
+
+function switchViz(vizVal){
+  cfg.viz='dot';cfg.vizCol='';
+  if(vizVal.startsWith('pie:')){cfg.viz='pie';cfg.vizCol=vizVal.split(':')[1]}
+  else if(vizVal.startsWith('bubble:')){cfg.viz='bubble';cfg.vizCol=vizVal.split(':')[1]}
+  // Update vizVal on all points from stored allNums
+  allPts.forEach(d=>{d.vizVal=cfg.vizCol?(d.allNums[cfg.vizCol]||0):0});
+  actF='all';
+  buildLegend();buildFilter();applyF();
+}
+
+/* ═══ TILES ═══ */
+function lon2tx(n,z){return((n+180)/360)*(1<<z)}
+function lat2ty(n,z){const r=n*Math.PI/180;return((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2)*(1<<z)}
+function toPx(la,lo){return{x:Math.round(mW/2+(lon2tx(lo,zoom)-lon2tx(cLon,zoom))*T),y:Math.round(mH/2+(lat2ty(la,zoom)-lat2ty(cLat,zoom))*T)}}
+
+function renderTiles(){
+  const cx=lon2tx(cLon,zoom),cy=lat2ty(cLat,zoom),hw=mW/2,hh=mH/2;
+  const x0=Math.floor(cx-hw/T)-1,x1=Math.ceil(cx+hw/T)+1,y0=Math.floor(cy-hh/T)-1,y1=Math.ceil(cy+hh/T)+1;
+  const need=new Set,tl=$('tileLayer');
+  for(let tx=x0;tx<=x1;tx++)for(let ty=y0;ty<=y1;ty++){
+    const k=`${zoom}/${tx}/${ty}`;need.add(k);
+    const px=Math.round(hw+(tx-cx)*T),py=Math.round(hh+(ty-cy)*T);
+    let img=tileCache[k];
+    if(!img){img=document.createElement('img');img.src=`https://${SRV[(tx+ty)%3]}.tile.openstreetmap.org/${k}.png`;img.draggable=false;img.alt='';tileCache[k]=img;tl.appendChild(img)}
+    img.style.left=px+'px';img.style.top=py+'px';img.style.display='block';
+  }
+  for(const k in tileCache)if(!need.has(k))tileCache[k].style.display='none';
+}
+
+/* ═══ PIE ═══ */
+function pieSvg(m,sz){const r=sz/2,ir=r-1;if(m<=0)return`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${r}" cy="${r}" r="${ir}" fill="${CB}" stroke="#fff" stroke-width="1.5"/></svg>`;if(m>=.999)return`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${r}" cy="${r}" r="${ir}" fill="${CR}" stroke="#fff" stroke-width="1.5"/></svg>`;const a=m*2*Math.PI,ex=r+ir*Math.sin(a),ey=r-ir*Math.cos(a),la=m>.5?1:0;return`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${r}" cy="${r}" r="${ir}" fill="${CB}" stroke="#fff" stroke-width="1.5"/><path d="M ${r} ${r} L ${r} ${r-ir} A ${ir} ${ir} 0 ${la} 1 ${ex} ${ey} Z" fill="${CR}" stroke="#fff" stroke-width=".5"/></svg>`}
+
+/* ═══ MARKERS ═══ */
+function renderMarkers(){
+  const bs=Math.max(14,Math.min(26,(zoom-10)*3)),ml=$('mkrLayer');ml.innerHTML='';
+  let mx=1;if(cfg.viz==='bubble')mx=Math.max(1,...fPts.map(d=>d.vizVal||0));
+  fPts.forEach(d=>{
+    const p=toPx(d.la,d.lo);if(p.x<-50||p.x>mW+50||p.y<-50||p.y>mH+50)return;
+    let sz=bs,html='';
+    if(cfg.viz==='pie'){const v=Math.max(0,Math.min(1,d.vizVal||0));html=pieSvg(v,sz)}
+    else if(cfg.viz==='bubble'){const v=d.vizVal||0;sz=Math.max(10,bs*(.4+.6*(v/mx)));html=`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${sz/2}" cy="${sz/2}" r="${sz/2-1}" fill="#1fa497" fill-opacity=".6" stroke="#fff" stroke-width="1.2"/></svg>`}
+    else{html=`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${sz/2}" cy="${sz/2}" r="${sz/2-1}" fill="#1fa497" fill-opacity=".7" stroke="#fff" stroke-width="1.2"/></svg>`}
+    const el=document.createElement('div');el.className='mkr';el.style.cssText=`left:${p.x}px;top:${p.y}px;width:${sz}px;height:${sz}px`;el.innerHTML=html;
+    el.addEventListener('mouseenter',()=>showTT(d,p));el.addEventListener('mouseleave',hideTT);
+    ml.appendChild(el);
+  });
+}
+
+/* ═══ TOOLTIP ═══ */
+function showTT(d,p){
+  const tt=$('tooltip');let h=`<div class="tt-title">${d.label}</div>`;
+  cfg.show.forEach(c=>{
+    if(c===cfg.lat||c===cfg.lon)return;
+    const v=d.vals[c];if(v===undefined)return;
+    const num=parseFloat(v);
+    let display=v;
+    if(!isNaN(num)){
+      if(cfg.viz==='pie'&&c===cfg.vizCol)display=(num*100).toFixed(1)+'%';
+      else if(num>=1000)display='$'+Math.round(num).toLocaleString();
+      else display=num.toLocaleString();
+    }
+    h+=`<div class="tt-row"><span class="tt-rl">${c}</span><span class="tt-rv">${display}</span></div>`;
+  });
+  if(cfg.viz==='pie'){
+    const v=d.vizVal||0;const bc=v>=.66?'#4caf50':v>=.33?'#ff9800':'#e53935';
+    h+=`<div class="tt-bar"><div class="tt-bar-fill" style="width:${v*100}%;background:${bc}"></div></div>`;
+  }
+  tt.innerHTML=h;
+  // Position after content is set so offsetHeight is correct
+  requestAnimationFrame(()=>{
+    let left=p.x-tt.offsetWidth/2;if(left<8)left=8;if(left+tt.offsetWidth>mW-8)left=mW-tt.offsetWidth-8;
+    tt.style.left=left+'px';tt.style.top=Math.max(4,p.y-tt.offsetHeight-20)+'px';
+    tt.classList.add('show');
+  });
+}
+function hideTT(){$('tooltip').classList.remove('show')}
+
+/* ═══ LEGEND ═══ */
+function buildLegend(){
+  const lp=$('legPnl');let h='<div class="legend-title">Legend</div>';
+  if(cfg.viz==='pie'){
+    h+=`<svg width="30" height="30" viewBox="0 0 30 30" style="margin:4px 0 8px"><circle cx="15" cy="15" r="13" fill="${CB}" stroke="#fff" stroke-width="1"/><path d="M 15 15 L 15 2 A 13 13 0 0 1 27.5 17.5 Z" fill="${CR}" stroke="#fff" stroke-width=".5"/></svg>`;
+    h+=`<div class="legend-row"><div class="legend-sw" style="background:${CR}"></div><span class="legend-lbl">${cfg.vizCol}</span></div>`;
+    h+=`<div class="legend-row"><div class="legend-sw" style="background:${CB}"></div><span class="legend-lbl">Remainder</span></div>`;
+    h+=`<div class="legend-div"></div><div class="legend-note">Use filter to isolate tiers</div>`;
+  } else if(cfg.viz==='bubble'){
+    h+=`<div class="legend-row" style="margin:6px 0"><div class="legend-sw" style="background:var(--ac);border-radius:50%"></div><span class="legend-lbl">Size = ${cfg.vizCol}</span></div>`;
+  } else {
+    h+=`<div class="legend-row" style="margin:6px 0"><div class="legend-sw" style="background:var(--ac);border-radius:50%"></div><span class="legend-lbl">Data point</span></div>`;
+  }
+  lp.innerHTML=h;
+}
+
+/* ═══ FILTER ═══ */
+function buildFilter(){
+  const fp=$('fPnl');
+  if(cfg.viz!=='pie'){fp.classList.add('hidden');return}
+  fp.classList.remove('hidden');
+  fp.innerHTML=`<span class="filter-label">Filter</span><div class="filter-btns" id="fBtns"></div>`;
+  [{k:'all',l:`All (${allPts.length})`},{k:'high',l:'High 66%+'},{k:'mid',l:'33-66%'},{k:'low',l:'<33%'}].forEach(b=>{
+    const btn=document.createElement('button');btn.className='fbtn'+(actF===b.k?' on':'');btn.textContent=b.l;
+    btn.onclick=()=>{actF=b.k;applyF();document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('on'));btn.classList.add('on')};
+    $('fBtns').appendChild(btn);
+  });
+}
+
+function applyF(){
+  if(cfg.viz==='pie'){
+    if(actF==='high')fPts=allPts.filter(d=>d.vizVal>=.66);
+    else if(actF==='mid')fPts=allPts.filter(d=>d.vizVal>.33&&d.vizVal<.66);
+    else if(actF==='low')fPts=allPts.filter(d=>d.vizVal<=.33);
+    else fPts=[...allPts];
+  } else fPts=[...allPts];
+  renderMarkers();buildStats();
+}
+
+function buildStats(){
+  const s=[{v:fPts.length,l:'Points'}];
+  // Show stats for numeric show-columns (first 2)
+  const numShow=cfg.show.filter(c=>{const i=hdrs.indexOf(c);return i>=0&&isNumCol(i)&&c!==cfg.lat&&c!==cfg.lon}).slice(0,2);
+  numShow.forEach(c=>{const t=fPts.reduce((a,d)=>a+(parseFloat(d.vals[c])||0),0);s.push({v:t>=1000?'$'+Math.round(t).toLocaleString():t.toLocaleString(),l:c})});
+  if(cfg.viz==='pie'){const a=fPts.length?fPts.reduce((s,d)=>s+(d.vizVal||0),0)/fPts.length:0;s.push({v:(a*100).toFixed(1)+'%',l:'Avg '+cfg.vizCol})}
+  $('statsBar').innerHTML=s.map(x=>`<div class="stat"><div class="stat-val">${x.v}</div><div class="stat-lbl">${x.l}</div></div>`).join('');
+}
+
+/* ═══ RENDER ═══ */
+function render(){renderTiles();applyF()}
+function updDims(){const r=$('mapWrap').getBoundingClientRect();mW=r.width;mH=r.height}
+
+/* ═══ PAN ═══ */
+$('mapWrap').addEventListener('mousedown',e=>{if(e.button!==0)return;drag={x:e.clientX,y:e.clientY,lat:cLat,lon:cLon};$('mapWrap').classList.add('grabbing')});
+window.addEventListener('mousemove',e=>{if(!drag)return;const sc=T*(1<<zoom);cLon=drag.lon-(e.clientX-drag.x)/sc*360;cLat=drag.lat+(e.clientY-drag.y)/sc*360*Math.cos(drag.lat*Math.PI/180);if(!raf)raf=requestAnimationFrame(()=>{renderTiles();renderMarkers();raf=null})});
+window.addEventListener('mouseup',()=>{drag=null;$('mapWrap')?.classList.remove('grabbing')});
+$('mapWrap').addEventListener('wheel',e=>{e.preventDefault();const nz=zoom+(e.deltaY<0?1:-1);if(nz>=4&&nz<=19){zoom=nz;render()}},{passive:false});
+function doZ(d){const nz=zoom+d;if(nz>=4&&nz<=19){zoom=nz;render()}}
+new ResizeObserver(()=>{if(!$('s3').classList.contains('active'))return;updDims();render()}).observe($('mapWrap'));
+</script>
+</body>
+</html>
