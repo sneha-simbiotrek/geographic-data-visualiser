@@ -461,7 +461,7 @@ function applyF(){
 }
 
 function buildStats(){
-  const s=[{v:fPts.length,l:'Points'}];
+  const s=[{v:fPts.length,l:'Data Count'}];
   // Show stats for numeric show-columns (first 2)
   const numShow=cfg.show.filter(c=>{const i=hdrs.indexOf(c);return i>=0&&isNumCol(i)&&c!==cfg.lat&&c!==cfg.lon}).slice(0,2);
   numShow.forEach(c=>{const t=fPts.reduce((a,d)=>a+(parseFloat(d.vals[c])||0),0);s.push({v:t>=1000?'$'+Math.round(t).toLocaleString():t.toLocaleString(),l:c})});
