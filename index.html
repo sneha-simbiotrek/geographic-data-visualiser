@@ -241,6 +241,9 @@ const LBL_P=[/zip/i,/postal/i,/^id$/i,/^name$/i,/^code$/i,/^label$/i,/location/i
 function detect(h,pats){for(const p of pats){const m=h.find(x=>p.test(x));if(m)return m}return''}
 function isNumCol(ci){let nums=0;for(let i=0;i<Math.min(10,rows.length);i++){if(!isNaN(parseFloat(rows[i][ci])))nums++}return nums>=Math.min(5,rows.length*.5)}
 function isPenCol(ci){let ok=0;for(let i=0;i<Math.min(20,rows.length);i++){const v=parseFloat(rows[i][ci]);if(!isNaN(v)&&v>=0&&v<=1)ok++}return ok>=Math.min(10,rows.length*.5)}
+function isMoneyCol(name){return /rev|sales|amount|spend|income|cost|price|fee|budget|profit|value|ticket/i.test(name)}
+function isIdCol(name){return /zip|postal|^id$|code|^name$|label|location|region|territory|area|site|store|brand|status|source|type|category/i.test(name)}
+function isSummableCol(name,ci){return isNumCol(ci)&&!isIdCol(name)&&!isPenCol(ci)&&!/lat|lon|lng|^x$|^y$/i.test(name)}
 
 /* ═══ FILE ═══ */
 function handleFile(f){$('e1').textContent='\u00A0';if(!f)return;const rd=new FileReader;rd.onload=e=>{try{const d=parseCSV(e.target.result);hdrs=d.headers;rows=d.rows;buildSetup();go('s2')}catch(er){$('e1').textContent=er.message}};rd.readAsText(f)}
@@ -402,7 +405,7 @@ function showTT(d,p){
     let display=v;
     if(!isNaN(num)){
       if(cfg.viz==='pie'&&c===cfg.vizCol)display=(num*100).toFixed(1)+'%';
-      else if(num>=1000)display='$'+Math.round(num).toLocaleString();
+      else if(isMoneyCol(c))display='$'+Math.round(num).toLocaleString();
       else display=num.toLocaleString();
     }
     h+=`<div class="tt-row"><span class="tt-rl">${c}</span><span class="tt-rv">${display}</span></div>`;
@@ -461,10 +464,10 @@ function applyF(){
 }
 
 function buildStats(){
-  const s=[{v:fPts.length,l:'Data Count'}];
-  // Show stats for numeric show-columns (first 2)
-  const numShow=cfg.show.filter(c=>{const i=hdrs.indexOf(c);return i>=0&&isNumCol(i)&&c!==cfg.lat&&c!==cfg.lon}).slice(0,2);
-  numShow.forEach(c=>{const t=fPts.reduce((a,d)=>a+(parseFloat(d.vals[c])||0),0);s.push({v:t>=1000?'$'+Math.round(t).toLocaleString():t.toLocaleString(),l:c})});
+  const s=[{v:fPts.length,l:'Points'}];
+  // Only sum columns that make sense to aggregate (not IDs, not lat/lon, not penetration)
+  const sumCols=cfg.show.filter(c=>{const i=hdrs.indexOf(c);return i>=0&&isSummableCol(c,i)}).slice(0,2);
+  sumCols.forEach(c=>{const t=fPts.reduce((a,d)=>a+(parseFloat(d.vals[c])||0),0);const fmt=isMoneyCol(c)?'$'+Math.round(t).toLocaleString():Math.round(t).toLocaleString();s.push({v:fmt,l:c})});
   if(cfg.viz==='pie'){const a=fPts.length?fPts.reduce((s,d)=>s+(d.vizVal||0),0)/fPts.length:0;s.push({v:(a*100).toFixed(1)+'%',l:'Avg '+cfg.vizCol})}
   $('statsBar').innerHTML=s.map(x=>`<div class="stat"><div class="stat-val">${x.v}</div><div class="stat-lbl">${x.l}</div></div>`).join('');
 }
